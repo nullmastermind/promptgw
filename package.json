@@ -1,5 +1,5 @@
 {
-  "name": "promptgw",
+  "name": "@dccxx/promptgw",
   "version": "0.0.1",
   "description": "Prompt Gateway CLI",
   "main": "dist/index.js",
