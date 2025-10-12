@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
+import { exec } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import * as p from '@clack/prompts';
+
+const execAsync = promisify(exec);
 
 interface Prompt {
   id: string;
@@ -145,6 +149,28 @@ ${prompt.content}`;
   spinner.stop(`Successfully saved ${savedCount} prompts to ${targetDir}`);
 }
 
+async function commitPrompts(platform: string): Promise<void> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+  const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
+
+  const spinner = p.spinner();
+  spinner.start('Committing changes...');
+
+  try {
+    await execAsync('git add .augment/rules');
+    await execAsync(`git commit -m "${commitMessage}"`);
+    spinner.stop('Successfully committed changes');
+  } catch (error) {
+    spinner.stop('Failed to commit changes');
+    throw error;
+  }
+}
+
 async function main() {
   console.clear();
 
@@ -176,7 +202,28 @@ async function main() {
     const prompts = await fetchAllPrompts(token);
     await saveAugmentPrompts(prompts);
 
-    p.outro('✅ All prompts have been saved successfully!');
+    const shouldCommit = await p.confirm({
+      message: 'Do you want to commit these changes?',
+      initialValue: false,
+    });
+
+    if (p.isCancel(shouldCommit)) {
+      p.cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    if (shouldCommit) {
+      try {
+        await commitPrompts(platform as string);
+        p.outro('✅ All prompts have been saved and committed successfully!');
+      } catch (error) {
+        p.log.warn('Prompts saved but commit failed');
+        p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        p.outro('⚠️ Prompts saved but not committed');
+      }
+    } else {
+      p.outro('✅ All prompts have been saved successfully!');
+    }
   } catch (error) {
     p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     p.outro('❌ Operation failed');
