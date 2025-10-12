@@ -17,6 +17,7 @@
 - Define all function input parameters and return values before implementation.
 - Define all required functions and their signatures at once before writing implementation logic.
 - Implementation logic should be written only after all data structures and function definitions are complete.
-- ALWAYS run `bun run lint` at root directory after writing code to ensure code quality.
-- Linter: biome. NEVER run --unsafe, manually fix all errors.
+- ALWAYS run `bun run check` at root directory after writing code to ensure code quality and type safety.
+- This runs both linter (biome) and typecheck (tsc). NEVER run biome with --unsafe, manually fix all errors.
+- Code must pass both lint and typecheck before being considered complete.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
-console.log('Hello via Bun!');
-
+console.log('Hello from promptgw!');
