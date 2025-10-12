@@ -119,8 +119,46 @@ async function fetchAllPrompts(token: string): Promise<Prompt[]> {
   }
 }
 
-async function saveAugmentPrompts(prompts: Prompt[]): Promise<void> {
-  const targetDir = join(process.cwd(), '.augment', 'rules');
+function getFrontmatter(platform: string, promptName: string): string {
+  switch (platform) {
+    case 'augment':
+      return `---
+type: "manual"
+description: ${JSON.stringify(promptName)}
+---`;
+    case 'qoder':
+      return `---
+trigger: manual
+description: ${JSON.stringify(promptName)}
+---`;
+    case 'cursor':
+      return `---
+alwaysApply: false
+description: ${JSON.stringify(promptName)}
+---`;
+    default:
+      return `---
+type: "manual"
+description: ${JSON.stringify(promptName)}
+---`;
+  }
+}
+
+function getTargetDirectory(platform: string): string {
+  switch (platform) {
+    case 'augment':
+      return join(process.cwd(), '.augment', 'rules');
+    case 'qoder':
+      return join(process.cwd(), '.qoder', 'rules');
+    case 'cursor':
+      return join(process.cwd(), '.cursor', 'rules');
+    default:
+      return join(process.cwd(), '.augment', 'rules');
+  }
+}
+
+async function savePrompts(prompts: Prompt[], platform: string): Promise<void> {
+  const targetDir = getTargetDirectory(platform);
 
   if (!existsSync(targetDir)) {
     mkdirSync(targetDir, { recursive: true });
@@ -134,10 +172,8 @@ async function saveAugmentPrompts(prompts: Prompt[]): Promise<void> {
     const filename = `${prompt.command}.md`;
     const filepath = join(targetDir, filename);
 
-    const fileContent = `---
-type: "manual"
-description: "${prompt.name}"
----
+    const frontmatter = getFrontmatter(platform, prompt.name);
+    const fileContent = `${frontmatter}
 
 ${prompt.content}`;
 
@@ -158,11 +194,18 @@ async function commitPrompts(platform: string): Promise<void> {
   const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
   const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
 
+  const rulesPath =
+    platform === 'augment'
+      ? '.augment/rules'
+      : platform === 'qoder'
+        ? '.qoder/rules'
+        : '.cursor/rules';
+
   const spinner = p.spinner();
   spinner.start('Committing changes...');
 
   try {
-    await execAsync('git add .augment/rules');
+    await execAsync(`git add ${rulesPath}`);
     await execAsync(`git commit -m "${commitMessage}"`);
     spinner.stop('Successfully committed changes');
   } catch (error) {
@@ -192,15 +235,9 @@ async function main() {
     process.exit(0);
   }
 
-  if (platform === 'cursor' || platform === 'qoder') {
-    p.note('This feature is coming soon!', 'Coming Soon');
-    p.outro('Thank you for using Prompt Gateway CLI');
-    return;
-  }
-
   try {
     const prompts = await fetchAllPrompts(token);
-    await saveAugmentPrompts(prompts);
+    await savePrompts(prompts, platform as string);
 
     const shouldCommit = await p.confirm({
       message: 'Do you want to commit these changes?',
