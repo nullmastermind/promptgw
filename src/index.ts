@@ -136,6 +136,11 @@ description: ${JSON.stringify(promptName)}
 alwaysApply: false
 description: ${JSON.stringify(promptName)}
 ---`;
+    case 'factory-droids':
+    case 'factory-commands':
+      return `---
+description: ${JSON.stringify(promptName)}
+---`;
     default:
       return `---
 type: "manual"
@@ -152,6 +157,10 @@ function getTargetDirectory(platform: string): string {
       return join(process.cwd(), '.qoder', 'rules');
     case 'cursor':
       return join(process.cwd(), '.cursor', 'rules');
+    case 'factory-droids':
+      return join(process.cwd(), '.factory', 'droids');
+    case 'factory-commands':
+      return join(process.cwd(), '.factory', 'commands');
     default:
       return join(process.cwd(), '.augment', 'rules');
   }
@@ -164,14 +173,32 @@ function replacePlatformPaths(content: string, platform: string): string {
     case 'augment':
       result = result.replace(/\.cursor\/rules\//g, '.augment/rules/');
       result = result.replace(/\.qoder\/rules\//g, '.augment/rules/');
+      result = result.replace(/\.factory\/droids\//g, '.augment/rules/');
+      result = result.replace(/\.factory\/commands\//g, '.augment/rules/');
       break;
     case 'cursor':
       result = result.replace(/\.augment\/rules\//g, '.cursor/rules/');
       result = result.replace(/\.qoder\/rules\//g, '.cursor/rules/');
+      result = result.replace(/\.factory\/droids\//g, '.cursor/rules/');
+      result = result.replace(/\.factory\/commands\//g, '.cursor/rules/');
       break;
     case 'qoder':
       result = result.replace(/\.augment\/rules\//g, '.qoder/rules/');
       result = result.replace(/\.cursor\/rules\//g, '.qoder/rules/');
+      result = result.replace(/\.factory\/droids\//g, '.qoder/rules/');
+      result = result.replace(/\.factory\/commands\//g, '.qoder/rules/');
+      break;
+    case 'factory-droids':
+      result = result.replace(/\.augment\/rules\//g, '.factory/droids/');
+      result = result.replace(/\.cursor\/rules\//g, '.factory/droids/');
+      result = result.replace(/\.qoder\/rules\//g, '.factory/droids/');
+      result = result.replace(/\.factory\/commands\//g, '.factory/droids/');
+      break;
+    case 'factory-commands':
+      result = result.replace(/\.augment\/rules\//g, '.factory/commands/');
+      result = result.replace(/\.cursor\/rules\//g, '.factory/commands/');
+      result = result.replace(/\.qoder\/rules\//g, '.factory/commands/');
+      result = result.replace(/\.factory\/droids\//g, '.factory/commands/');
       break;
   }
 
@@ -218,11 +245,18 @@ async function commitPrompts(platform: string): Promise<void> {
 
   try {
     if (platform === 'all') {
-      await execAsync('git add .augment/rules .cursor/rules .qoder/rules');
+      await execAsync(
+        'git add .augment/rules .cursor/rules .qoder/rules .factory/droids .factory/commands',
+      );
       const commitMessage = `chore: sync all platform rules (${year}-${month}-${day})`;
       await execAsync(`git commit -m "${commitMessage}"`);
     } else {
-      const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+      const platformName =
+        platform === 'factory-droids'
+          ? 'Factory Droids'
+          : platform === 'factory-commands'
+            ? 'Factory Commands'
+            : platform.charAt(0).toUpperCase() + platform.slice(1);
       const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
 
       const rulesPath =
@@ -230,7 +264,11 @@ async function commitPrompts(platform: string): Promise<void> {
           ? '.augment/rules'
           : platform === 'qoder'
             ? '.qoder/rules'
-            : '.cursor/rules';
+            : platform === 'cursor'
+              ? '.cursor/rules'
+              : platform === 'factory-droids'
+                ? '.factory/droids'
+                : '.factory/commands';
 
       await execAsync(`git add ${rulesPath}`);
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -252,10 +290,12 @@ async function main() {
   const platform = await p.select({
     message: 'Select a platform:',
     options: [
-      { value: 'all', label: 'All (Augment + Cursor + Qoder)' },
+      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory)' },
       { value: 'augment', label: 'Augment' },
       { value: 'cursor', label: 'Cursor' },
       { value: 'qoder', label: 'Qoder' },
+      { value: 'factory-droids', label: 'Factory Droids' },
+      { value: 'factory-commands', label: 'Factory Commands' },
     ],
   });
 
@@ -271,6 +311,8 @@ async function main() {
       await savePrompts(prompts, 'augment');
       await savePrompts(prompts, 'cursor');
       await savePrompts(prompts, 'qoder');
+      await savePrompts(prompts, 'factory-droids');
+      await savePrompts(prompts, 'factory-commands');
     } else {
       await savePrompts(prompts, platform as string);
     }
