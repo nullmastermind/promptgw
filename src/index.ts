@@ -191,22 +191,28 @@ async function commitPrompts(platform: string): Promise<void> {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
 
-  const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
-  const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
-
-  const rulesPath =
-    platform === 'augment'
-      ? '.augment/rules'
-      : platform === 'qoder'
-        ? '.qoder/rules'
-        : '.cursor/rules';
-
   const spinner = p.spinner();
   spinner.start('Committing changes...');
 
   try {
-    await execAsync(`git add ${rulesPath}`);
-    await execAsync(`git commit -m "${commitMessage}"`);
+    if (platform === 'all') {
+      await execAsync('git add .augment/rules .cursor/rules .qoder/rules');
+      const commitMessage = `chore: sync all platform rules (${year}-${month}-${day})`;
+      await execAsync(`git commit -m "${commitMessage}"`);
+    } else {
+      const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+      const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
+
+      const rulesPath =
+        platform === 'augment'
+          ? '.augment/rules'
+          : platform === 'qoder'
+            ? '.qoder/rules'
+            : '.cursor/rules';
+
+      await execAsync(`git add ${rulesPath}`);
+      await execAsync(`git commit -m "${commitMessage}"`);
+    }
     spinner.stop('Successfully committed changes');
   } catch (error) {
     spinner.stop('Failed to commit changes');
@@ -224,6 +230,7 @@ async function main() {
   const platform = await p.select({
     message: 'Select a platform:',
     options: [
+      { value: 'all', label: 'All (Augment + Cursor + Qoder)' },
       { value: 'augment', label: 'Augment' },
       { value: 'cursor', label: 'Cursor' },
       { value: 'qoder', label: 'Qoder' },
@@ -237,7 +244,14 @@ async function main() {
 
   try {
     const prompts = await fetchAllPrompts(token);
-    await savePrompts(prompts, platform as string);
+
+    if (platform === 'all') {
+      await savePrompts(prompts, 'augment');
+      await savePrompts(prompts, 'cursor');
+      await savePrompts(prompts, 'qoder');
+    } else {
+      await savePrompts(prompts, platform as string);
+    }
 
     const shouldCommit = await p.confirm({
       message: 'Do you want to commit these changes?',
