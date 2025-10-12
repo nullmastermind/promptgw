@@ -1,0 +1,28 @@
+{
+  "name": "promptgw",
+  "version": "0.0.1",
+  "description": "Prompt Gateway CLI",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "promptgw": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm",
+    "lint": "bunx biome check --write",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "check": "bun run lint && bun run typecheck",
+    "prepublishOnly": "bun run check && bun run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.5",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
