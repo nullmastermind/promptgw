@@ -157,6 +157,27 @@ function getTargetDirectory(platform: string): string {
   }
 }
 
+function replacePlatformPaths(content: string, platform: string): string {
+  let result = content;
+
+  switch (platform) {
+    case 'augment':
+      result = result.replace(/\.cursor\/rules\//g, '.augment/rules/');
+      result = result.replace(/\.qoder\/rules\//g, '.augment/rules/');
+      break;
+    case 'cursor':
+      result = result.replace(/\.augment\/rules\//g, '.cursor/rules/');
+      result = result.replace(/\.qoder\/rules\//g, '.cursor/rules/');
+      break;
+    case 'qoder':
+      result = result.replace(/\.augment\/rules\//g, '.qoder/rules/');
+      result = result.replace(/\.cursor\/rules\//g, '.qoder/rules/');
+      break;
+  }
+
+  return result;
+}
+
 async function savePrompts(prompts: Prompt[], platform: string): Promise<void> {
   const targetDir = getTargetDirectory(platform);
 
@@ -173,9 +194,10 @@ async function savePrompts(prompts: Prompt[], platform: string): Promise<void> {
     const filepath = join(targetDir, filename);
 
     const frontmatter = getFrontmatter(platform, prompt.name);
+    const processedContent = replacePlatformPaths(prompt.content, platform);
     const fileContent = `${frontmatter}
 
-${prompt.content}`;
+${processedContent}`;
 
     writeFileSync(filepath, fileContent, 'utf-8');
     savedCount++;
