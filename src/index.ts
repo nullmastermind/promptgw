@@ -166,6 +166,10 @@ function getTargetDirectory(platform: string): string {
   }
 }
 
+function getFileExtension(platform: string): string {
+  return platform === 'cursor' ? 'mdc' : 'md';
+}
+
 function replacePlatformPaths(content: string, platform: string): string {
   let result = content;
 
@@ -216,8 +220,9 @@ async function savePrompts(prompts: Prompt[], platform: string): Promise<void> {
   spinner.start('Saving prompts...');
 
   let savedCount = 0;
+  const fileExtension = getFileExtension(platform);
   for (const prompt of prompts) {
-    const filename = `${prompt.command}.md`;
+    const filename = `${prompt.command}.${fileExtension}`;
     const filepath = join(targetDir, filename);
 
     const frontmatter = getFrontmatter(platform, prompt.name);
