@@ -131,7 +131,8 @@ description: ${JSON.stringify(promptName)}
 trigger: manual
 description: ${JSON.stringify(promptName)}
 ---`;
-    case 'cursor':
+    case 'cursor-rules':
+    case 'cursor-commands':
       return `---
 alwaysApply: false
 description: ${JSON.stringify(promptName)}
@@ -155,8 +156,10 @@ function getTargetDirectory(platform: string): string {
       return join(process.cwd(), '.augment', 'rules');
     case 'qoder':
       return join(process.cwd(), '.qoder', 'rules');
-    case 'cursor':
+    case 'cursor-rules':
       return join(process.cwd(), '.cursor', 'rules');
+    case 'cursor-commands':
+      return join(process.cwd(), '.cursor', 'commands');
     case 'factory-droids':
       return join(process.cwd(), '.factory', 'droids');
     case 'factory-commands':
@@ -167,7 +170,7 @@ function getTargetDirectory(platform: string): string {
 }
 
 function getFileExtension(platform: string): string {
-  return platform === 'cursor' ? 'mdc' : 'md';
+  return platform === 'cursor-rules' ? 'mdc' : 'md';
 }
 
 function replacePlatformPaths(content: string, platform: string): string {
@@ -176,31 +179,43 @@ function replacePlatformPaths(content: string, platform: string): string {
   switch (platform) {
     case 'augment':
       result = result.replace(/\.cursor\/rules\//g, '.augment/rules/');
+      result = result.replace(/\.cursor\/commands\//g, '.augment/rules/');
       result = result.replace(/\.qoder\/rules\//g, '.augment/rules/');
       result = result.replace(/\.factory\/droids\//g, '.augment/rules/');
       result = result.replace(/\.factory\/commands\//g, '.augment/rules/');
       break;
-    case 'cursor':
+    case 'cursor-rules':
       result = result.replace(/\.augment\/rules\//g, '.cursor/rules/');
+      result = result.replace(/\.cursor\/commands\//g, '.cursor/rules/');
       result = result.replace(/\.qoder\/rules\//g, '.cursor/rules/');
       result = result.replace(/\.factory\/droids\//g, '.cursor/rules/');
       result = result.replace(/\.factory\/commands\//g, '.cursor/rules/');
       break;
+    case 'cursor-commands':
+      result = result.replace(/\.augment\/rules\//g, '.cursor/commands/');
+      result = result.replace(/\.cursor\/rules\//g, '.cursor/commands/');
+      result = result.replace(/\.qoder\/rules\//g, '.cursor/commands/');
+      result = result.replace(/\.factory\/droids\//g, '.cursor/commands/');
+      result = result.replace(/\.factory\/commands\//g, '.cursor/commands/');
+      break;
     case 'qoder':
       result = result.replace(/\.augment\/rules\//g, '.qoder/rules/');
       result = result.replace(/\.cursor\/rules\//g, '.qoder/rules/');
+      result = result.replace(/\.cursor\/commands\//g, '.qoder/rules/');
       result = result.replace(/\.factory\/droids\//g, '.qoder/rules/');
       result = result.replace(/\.factory\/commands\//g, '.qoder/rules/');
       break;
     case 'factory-droids':
       result = result.replace(/\.augment\/rules\//g, '.factory/droids/');
       result = result.replace(/\.cursor\/rules\//g, '.factory/droids/');
+      result = result.replace(/\.cursor\/commands\//g, '.factory/droids/');
       result = result.replace(/\.qoder\/rules\//g, '.factory/droids/');
       result = result.replace(/\.factory\/commands\//g, '.factory/droids/');
       break;
     case 'factory-commands':
       result = result.replace(/\.augment\/rules\//g, '.factory/commands/');
       result = result.replace(/\.cursor\/rules\//g, '.factory/commands/');
+      result = result.replace(/\.cursor\/commands\//g, '.factory/commands/');
       result = result.replace(/\.qoder\/rules\//g, '.factory/commands/');
       result = result.replace(/\.factory\/droids\//g, '.factory/commands/');
       break;
@@ -251,7 +266,7 @@ async function commitPrompts(platform: string): Promise<void> {
   try {
     if (platform === 'all') {
       await execAsync(
-        'git add .augment/rules .cursor/rules .qoder/rules .factory/droids .factory/commands',
+        'git add .augment/rules .cursor/rules .cursor/commands .qoder/rules .factory/droids .factory/commands',
       );
       const commitMessage = `chore: sync all platform rules (${year}-${month}-${day})`;
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -261,7 +276,11 @@ async function commitPrompts(platform: string): Promise<void> {
           ? 'Factory Droids'
           : platform === 'factory-commands'
             ? 'Factory Commands'
-            : platform.charAt(0).toUpperCase() + platform.slice(1);
+            : platform === 'cursor-rules'
+              ? 'Cursor Rules'
+              : platform === 'cursor-commands'
+                ? 'Cursor Commands'
+                : platform.charAt(0).toUpperCase() + platform.slice(1);
       const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
 
       const rulesPath =
@@ -269,11 +288,13 @@ async function commitPrompts(platform: string): Promise<void> {
           ? '.augment/rules'
           : platform === 'qoder'
             ? '.qoder/rules'
-            : platform === 'cursor'
+            : platform === 'cursor-rules'
               ? '.cursor/rules'
-              : platform === 'factory-droids'
-                ? '.factory/droids'
-                : '.factory/commands';
+              : platform === 'cursor-commands'
+                ? '.cursor/commands'
+                : platform === 'factory-droids'
+                  ? '.factory/droids'
+                  : '.factory/commands';
 
       await execAsync(`git add ${rulesPath}`);
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -309,17 +330,38 @@ async function main() {
     process.exit(0);
   }
 
+  let selectedPlatform = platform as string;
+
+  // Prompt for Cursor subdirectory selection when Cursor platform is chosen
+  if (platform === 'cursor') {
+    const cursorSubdir = await p.select({
+      message: 'Select Cursor subdirectory:',
+      options: [
+        { value: 'cursor-rules', label: 'Rules (.cursor/rules with .mdc extension)' },
+        { value: 'cursor-commands', label: 'Commands (.cursor/commands with .md extension)' },
+      ],
+    });
+
+    if (p.isCancel(cursorSubdir)) {
+      p.cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    selectedPlatform = cursorSubdir as string;
+  }
+
   try {
     const prompts = await fetchAllPrompts(token);
 
     if (platform === 'all') {
       await savePrompts(prompts, 'augment');
-      await savePrompts(prompts, 'cursor');
+      await savePrompts(prompts, 'cursor-rules');
+      await savePrompts(prompts, 'cursor-commands');
       await savePrompts(prompts, 'qoder');
       await savePrompts(prompts, 'factory-droids');
       await savePrompts(prompts, 'factory-commands');
     } else {
-      await savePrompts(prompts, platform as string);
+      await savePrompts(prompts, selectedPlatform);
     }
 
     const shouldCommit = await p.confirm({
@@ -334,7 +376,9 @@ async function main() {
 
     if (shouldCommit) {
       try {
-        await commitPrompts(platform as string);
+        // Use original platform value for 'all', otherwise use selectedPlatform
+        const commitPlatform = platform === 'all' ? 'all' : selectedPlatform;
+        await commitPrompts(commitPlatform);
         p.outro('✅ All prompts have been saved and committed successfully!');
       } catch (error) {
         p.log.warn('Prompts saved but commit failed');

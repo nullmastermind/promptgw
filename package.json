@@ -16,7 +16,8 @@
     "lint": "bunx biome check --write",
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "check": "bun run lint && bun run typecheck",
-    "prepublishOnly": "bun run check && bun run build"
+    "prepublishOnly": "bun run check && bun run build",
+    "dev": "bun run src/index.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",
