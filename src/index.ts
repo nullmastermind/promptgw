@@ -353,15 +353,48 @@ async function main() {
   try {
     const prompts = await fetchAllPrompts(token);
 
+    // Sort prompts alphabetically by command for easier selection
+    const sortedPrompts = [...prompts].sort((a, b) => a.command.localeCompare(b.command));
+
+    // Ask user which prompts to sync
+    const selectedPrompts = await p.multiselect({
+      message: 'Select prompts to sync (use space to select, enter to confirm):',
+      options: [
+        { value: 'all', label: 'All prompts', hint: `Sync all ${prompts.length} prompts` },
+        ...sortedPrompts.map((prompt) => ({
+          value: prompt.id,
+          label: `${prompt.command} - ${prompt.name}`,
+          hint: prompt.name,
+        })),
+      ],
+      required: true,
+    });
+
+    if (p.isCancel(selectedPrompts)) {
+      p.cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    // Determine which prompts to save
+    const promptsToSave = (selectedPrompts as string[]).includes('all')
+      ? prompts
+      : prompts.filter((prompt) => (selectedPrompts as string[]).includes(prompt.id));
+
+    if (promptsToSave.length === 0) {
+      p.log.warn('No prompts selected');
+      p.outro('⚠️ No prompts were saved');
+      process.exit(0);
+    }
+
     if (platform === 'all') {
-      await savePrompts(prompts, 'augment');
-      await savePrompts(prompts, 'cursor-rules');
-      await savePrompts(prompts, 'cursor-commands');
-      await savePrompts(prompts, 'qoder');
-      await savePrompts(prompts, 'factory-droids');
-      await savePrompts(prompts, 'factory-commands');
+      await savePrompts(promptsToSave, 'augment');
+      await savePrompts(promptsToSave, 'cursor-rules');
+      await savePrompts(promptsToSave, 'cursor-commands');
+      await savePrompts(promptsToSave, 'qoder');
+      await savePrompts(promptsToSave, 'factory-droids');
+      await savePrompts(promptsToSave, 'factory-commands');
     } else {
-      await savePrompts(prompts, selectedPlatform);
+      await savePrompts(promptsToSave, selectedPlatform);
     }
 
     const shouldCommit = await p.confirm({
