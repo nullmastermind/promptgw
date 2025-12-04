@@ -142,6 +142,10 @@ description: ${JSON.stringify(promptName)}
       return `---
 description: ${JSON.stringify(promptName)}
 ---`;
+    case 'claude':
+      return `---
+description: ${JSON.stringify(promptName)}
+---`;
     default:
       return `---
 type: "manual"
@@ -164,13 +168,16 @@ function getTargetDirectory(platform: string): string {
       return join(process.cwd(), '.factory', 'droids');
     case 'factory-commands':
       return join(process.cwd(), '.factory', 'commands');
+    case 'claude':
+      return join(process.cwd(), '.claude', 'commands');
     default:
       return join(process.cwd(), '.augment', 'rules');
   }
 }
 
 function getFileExtension(platform: string): string {
-  return platform === 'cursor-rules' ? 'mdc' : 'md';
+  if (platform === 'cursor-rules') return 'mdc';
+  return 'md';
 }
 
 function replacePlatformPaths(content: string, platform: string): string {
@@ -183,6 +190,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.augment/rules/');
       result = result.replace(/\.factory\/droids\//g, '.augment/rules/');
       result = result.replace(/\.factory\/commands\//g, '.augment/rules/');
+      result = result.replace(/\.claude\/commands\//g, '.augment/rules/');
       break;
     case 'cursor-rules':
       result = result.replace(/\.augment\/rules\//g, '.cursor/rules/');
@@ -190,6 +198,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.cursor/rules/');
       result = result.replace(/\.factory\/droids\//g, '.cursor/rules/');
       result = result.replace(/\.factory\/commands\//g, '.cursor/rules/');
+      result = result.replace(/\.claude\/commands\//g, '.cursor/rules/');
       break;
     case 'cursor-commands':
       result = result.replace(/\.augment\/rules\//g, '.cursor/commands/');
@@ -197,6 +206,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.cursor/commands/');
       result = result.replace(/\.factory\/droids\//g, '.cursor/commands/');
       result = result.replace(/\.factory\/commands\//g, '.cursor/commands/');
+      result = result.replace(/\.claude\/commands\//g, '.cursor/commands/');
       break;
     case 'qoder':
       result = result.replace(/\.augment\/rules\//g, '.qoder/rules/');
@@ -204,6 +214,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.cursor\/commands\//g, '.qoder/rules/');
       result = result.replace(/\.factory\/droids\//g, '.qoder/rules/');
       result = result.replace(/\.factory\/commands\//g, '.qoder/rules/');
+      result = result.replace(/\.claude\/commands\//g, '.qoder/rules/');
       break;
     case 'factory-droids':
       result = result.replace(/\.augment\/rules\//g, '.factory/droids/');
@@ -211,6 +222,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.cursor\/commands\//g, '.factory/droids/');
       result = result.replace(/\.qoder\/rules\//g, '.factory/droids/');
       result = result.replace(/\.factory\/commands\//g, '.factory/droids/');
+      result = result.replace(/\.claude\/commands\//g, '.factory/droids/');
       break;
     case 'factory-commands':
       result = result.replace(/\.augment\/rules\//g, '.factory/commands/');
@@ -218,6 +230,15 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.cursor\/commands\//g, '.factory/commands/');
       result = result.replace(/\.qoder\/rules\//g, '.factory/commands/');
       result = result.replace(/\.factory\/droids\//g, '.factory/commands/');
+      result = result.replace(/\.claude\/commands\//g, '.factory/commands/');
+      break;
+    case 'claude':
+      result = result.replace(/\.augment\/rules\//g, '.claude/commands/');
+      result = result.replace(/\.cursor\/rules\//g, '.claude/commands/');
+      result = result.replace(/\.cursor\/commands\//g, '.claude/commands/');
+      result = result.replace(/\.qoder\/rules\//g, '.claude/commands/');
+      result = result.replace(/\.factory\/droids\//g, '.claude/commands/');
+      result = result.replace(/\.factory\/commands\//g, '.claude/commands/');
       break;
   }
 
@@ -266,7 +287,7 @@ async function commitPrompts(platform: string): Promise<void> {
   try {
     if (platform === 'all') {
       await execAsync(
-        'git add .augment/rules .cursor/rules .cursor/commands .qoder/rules .factory/droids .factory/commands',
+        'git add .augment/rules .cursor/rules .cursor/commands .qoder/rules .factory/droids .factory/commands .claude/commands',
       );
       const commitMessage = `chore: sync all platform rules (${year}-${month}-${day})`;
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -280,7 +301,9 @@ async function commitPrompts(platform: string): Promise<void> {
               ? 'Cursor Rules'
               : platform === 'cursor-commands'
                 ? 'Cursor Commands'
-                : platform.charAt(0).toUpperCase() + platform.slice(1);
+                : platform === 'claude'
+                  ? 'ClaudeCode'
+                  : platform.charAt(0).toUpperCase() + platform.slice(1);
       const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
 
       const rulesPath =
@@ -294,7 +317,9 @@ async function commitPrompts(platform: string): Promise<void> {
                 ? '.cursor/commands'
                 : platform === 'factory-droids'
                   ? '.factory/droids'
-                  : '.factory/commands';
+                  : platform === 'factory-commands'
+                    ? '.factory/commands'
+                    : '.claude/commands';
 
       await execAsync(`git add ${rulesPath}`);
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -316,12 +341,13 @@ async function main() {
   const platform = await p.select({
     message: 'Select a platform:',
     options: [
-      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory)' },
+      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory + ClaudeCode)' },
       { value: 'augment', label: 'Augment' },
       { value: 'cursor', label: 'Cursor' },
       { value: 'qoder', label: 'Qoder' },
       { value: 'factory-droids', label: 'Factory Droids' },
       { value: 'factory-commands', label: 'Factory Commands' },
+      { value: 'claude', label: 'ClaudeCode' },
     ],
   });
 
@@ -393,6 +419,7 @@ async function main() {
       await savePrompts(promptsToSave, 'qoder');
       await savePrompts(promptsToSave, 'factory-droids');
       await savePrompts(promptsToSave, 'factory-commands');
+      await savePrompts(promptsToSave, 'claude');
     } else {
       await savePrompts(promptsToSave, selectedPlatform);
     }
