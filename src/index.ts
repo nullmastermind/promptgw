@@ -154,24 +154,28 @@ description: ${JSON.stringify(promptName)}
   }
 }
 
-function getTargetDirectory(platform: string): string {
+type Scope = 'global' | 'workspace';
+
+function getTargetDirectory(platform: string, scope: Scope): string {
+  const basePath = scope === 'global' ? homedir() : process.cwd();
+
   switch (platform) {
     case 'augment':
-      return join(process.cwd(), '.augment', 'rules');
+      return join(basePath, '.augment', 'rules');
     case 'qoder':
-      return join(process.cwd(), '.qoder', 'rules');
+      return join(basePath, '.qoder', 'rules');
     case 'cursor-rules':
-      return join(process.cwd(), '.cursor', 'rules');
+      return join(basePath, '.cursor', 'rules');
     case 'cursor-commands':
-      return join(process.cwd(), '.cursor', 'commands');
+      return join(basePath, '.cursor', 'commands');
     case 'factory-droids':
-      return join(process.cwd(), '.factory', 'droids');
+      return join(basePath, '.factory', 'droids');
     case 'factory-commands':
-      return join(process.cwd(), '.factory', 'commands');
+      return join(basePath, '.factory', 'commands');
     case 'claude':
-      return join(process.cwd(), '.claude', 'commands');
+      return join(basePath, '.claude', 'commands');
     default:
-      return join(process.cwd(), '.augment', 'rules');
+      return join(basePath, '.augment', 'rules');
   }
 }
 
@@ -245,8 +249,8 @@ function replacePlatformPaths(content: string, platform: string): string {
   return result;
 }
 
-async function savePrompts(prompts: Prompt[], platform: string): Promise<void> {
-  const targetDir = getTargetDirectory(platform);
+async function savePrompts(prompts: Prompt[], platform: string, scope: Scope): Promise<void> {
+  const targetDir = getTargetDirectory(platform, scope);
 
   if (!existsSync(targetDir)) {
     mkdirSync(targetDir, { recursive: true });
@@ -412,41 +416,66 @@ async function main() {
       process.exit(0);
     }
 
-    if (platform === 'all') {
-      await savePrompts(promptsToSave, 'augment');
-      await savePrompts(promptsToSave, 'cursor-rules');
-      await savePrompts(promptsToSave, 'cursor-commands');
-      await savePrompts(promptsToSave, 'qoder');
-      await savePrompts(promptsToSave, 'factory-droids');
-      await savePrompts(promptsToSave, 'factory-commands');
-      await savePrompts(promptsToSave, 'claude');
-    } else {
-      await savePrompts(promptsToSave, selectedPlatform);
-    }
-
-    const shouldCommit = await p.confirm({
-      message: 'Do you want to commit these changes?',
-      initialValue: false,
+    // Ask user for scope (global or workspace)
+    const scope = await p.select({
+      message: 'Select scope for saving rules:',
+      options: [
+        { value: 'workspace', label: 'Workspace', hint: 'Save to current working directory' },
+        {
+          value: 'global',
+          label: 'Global',
+          hint: 'Save to home directory (e.g., ~/.claude/commands/)',
+        },
+      ],
     });
 
-    if (p.isCancel(shouldCommit)) {
+    if (p.isCancel(scope)) {
       p.cancel('Operation cancelled');
       process.exit(0);
     }
 
-    if (shouldCommit) {
-      try {
-        // Use original platform value for 'all', otherwise use selectedPlatform
-        const commitPlatform = platform === 'all' ? 'all' : selectedPlatform;
-        await commitPrompts(commitPlatform);
-        p.outro('✅ All prompts have been saved and committed successfully!');
-      } catch (error) {
-        p.log.warn('Prompts saved but commit failed');
-        p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
-        p.outro('⚠️ Prompts saved but not committed');
+    const selectedScope = scope as Scope;
+
+    if (platform === 'all') {
+      await savePrompts(promptsToSave, 'augment', selectedScope);
+      await savePrompts(promptsToSave, 'cursor-rules', selectedScope);
+      await savePrompts(promptsToSave, 'cursor-commands', selectedScope);
+      await savePrompts(promptsToSave, 'qoder', selectedScope);
+      await savePrompts(promptsToSave, 'factory-droids', selectedScope);
+      await savePrompts(promptsToSave, 'factory-commands', selectedScope);
+      await savePrompts(promptsToSave, 'claude', selectedScope);
+    } else {
+      await savePrompts(promptsToSave, selectedPlatform, selectedScope);
+    }
+
+    // Only offer commit option for workspace scope (git operations not applicable for global rules)
+    if (selectedScope === 'workspace') {
+      const shouldCommit = await p.confirm({
+        message: 'Do you want to commit these changes?',
+        initialValue: false,
+      });
+
+      if (p.isCancel(shouldCommit)) {
+        p.cancel('Operation cancelled');
+        process.exit(0);
+      }
+
+      if (shouldCommit) {
+        try {
+          // Use original platform value for 'all', otherwise use selectedPlatform
+          const commitPlatform = platform === 'all' ? 'all' : selectedPlatform;
+          await commitPrompts(commitPlatform);
+          p.outro('✅ All prompts have been saved and committed successfully!');
+        } catch (error) {
+          p.log.warn('Prompts saved but commit failed');
+          p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+          p.outro('⚠️ Prompts saved but not committed');
+        }
+      } else {
+        p.outro('✅ All prompts have been saved successfully!');
       }
     } else {
-      p.outro('✅ All prompts have been saved successfully!');
+      p.outro('✅ All prompts have been saved to global directory successfully!');
     }
   } catch (error) {
     p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
