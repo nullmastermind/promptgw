@@ -14,6 +14,7 @@ Prompt Gateway CLI (`@dccxx/promptgw`) is a command-line tool that synchronizes 
 - Factory Droids (`.factory/droids/*.md`)
 - Factory Commands (`.factory/commands/*.md`)
 - ClaudeCode (`.claude/commands/*.md`)
+- Gemini (`.gemini/*.md`)
 
 ## Development Commands
 

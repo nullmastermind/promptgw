@@ -146,6 +146,10 @@ description: ${JSON.stringify(promptName)}
       return `---
 description: ${JSON.stringify(promptName)}
 ---`;
+    case 'gemini':
+      return `---
+description: ${JSON.stringify(promptName)}
+---`;
     default:
       return `---
 type: "manual"
@@ -174,6 +178,8 @@ function getTargetDirectory(platform: string, scope: Scope): string {
       return join(basePath, '.factory', 'commands');
     case 'claude':
       return join(basePath, '.claude', 'commands');
+    case 'gemini':
+      return join(basePath, '.gemini');
     default:
       return join(basePath, '.augment', 'rules');
   }
@@ -195,6 +201,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.factory\/droids\//g, '.augment/rules/');
       result = result.replace(/\.factory\/commands\//g, '.augment/rules/');
       result = result.replace(/\.claude\/commands\//g, '.augment/rules/');
+      result = result.replace(/\.gemini\//g, '.augment/rules/');
       break;
     case 'cursor-rules':
       result = result.replace(/\.augment\/rules\//g, '.cursor/rules/');
@@ -203,6 +210,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.factory\/droids\//g, '.cursor/rules/');
       result = result.replace(/\.factory\/commands\//g, '.cursor/rules/');
       result = result.replace(/\.claude\/commands\//g, '.cursor/rules/');
+      result = result.replace(/\.gemini\//g, '.cursor/rules/');
       break;
     case 'cursor-commands':
       result = result.replace(/\.augment\/rules\//g, '.cursor/commands/');
@@ -211,6 +219,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.factory\/droids\//g, '.cursor/commands/');
       result = result.replace(/\.factory\/commands\//g, '.cursor/commands/');
       result = result.replace(/\.claude\/commands\//g, '.cursor/commands/');
+      result = result.replace(/\.gemini\//g, '.cursor/commands/');
       break;
     case 'qoder':
       result = result.replace(/\.augment\/rules\//g, '.qoder/rules/');
@@ -219,6 +228,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.factory\/droids\//g, '.qoder/rules/');
       result = result.replace(/\.factory\/commands\//g, '.qoder/rules/');
       result = result.replace(/\.claude\/commands\//g, '.qoder/rules/');
+      result = result.replace(/\.gemini\//g, '.qoder/rules/');
       break;
     case 'factory-droids':
       result = result.replace(/\.augment\/rules\//g, '.factory/droids/');
@@ -227,6 +237,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.factory/droids/');
       result = result.replace(/\.factory\/commands\//g, '.factory/droids/');
       result = result.replace(/\.claude\/commands\//g, '.factory/droids/');
+      result = result.replace(/\.gemini\//g, '.factory/droids/');
       break;
     case 'factory-commands':
       result = result.replace(/\.augment\/rules\//g, '.factory/commands/');
@@ -235,6 +246,7 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.factory/commands/');
       result = result.replace(/\.factory\/droids\//g, '.factory/commands/');
       result = result.replace(/\.claude\/commands\//g, '.factory/commands/');
+      result = result.replace(/\.gemini\//g, '.factory/commands/');
       break;
     case 'claude':
       result = result.replace(/\.augment\/rules\//g, '.claude/commands/');
@@ -243,6 +255,16 @@ function replacePlatformPaths(content: string, platform: string): string {
       result = result.replace(/\.qoder\/rules\//g, '.claude/commands/');
       result = result.replace(/\.factory\/droids\//g, '.claude/commands/');
       result = result.replace(/\.factory\/commands\//g, '.claude/commands/');
+      result = result.replace(/\.gemini\//g, '.claude/commands/');
+      break;
+    case 'gemini':
+      result = result.replace(/\.augment\/rules\//g, '.gemini/');
+      result = result.replace(/\.cursor\/rules\//g, '.gemini/');
+      result = result.replace(/\.cursor\/commands\//g, '.gemini/');
+      result = result.replace(/\.qoder\/rules\//g, '.gemini/');
+      result = result.replace(/\.factory\/droids\//g, '.gemini/');
+      result = result.replace(/\.factory\/commands\//g, '.gemini/');
+      result = result.replace(/\.claude\/commands\//g, '.gemini/');
       break;
   }
 
@@ -291,7 +313,7 @@ async function commitPrompts(platform: string): Promise<void> {
   try {
     if (platform === 'all') {
       await execAsync(
-        'git add .augment/rules .cursor/rules .cursor/commands .qoder/rules .factory/droids .factory/commands .claude/commands',
+        'git add .augment/rules .cursor/rules .cursor/commands .qoder/rules .factory/droids .factory/commands .claude/commands .gemini',
       );
       const commitMessage = `chore: sync all platform rules (${year}-${month}-${day})`;
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -307,7 +329,9 @@ async function commitPrompts(platform: string): Promise<void> {
                 ? 'Cursor Commands'
                 : platform === 'claude'
                   ? 'ClaudeCode'
-                  : platform.charAt(0).toUpperCase() + platform.slice(1);
+                  : platform === 'gemini'
+                    ? 'Gemini'
+                    : platform.charAt(0).toUpperCase() + platform.slice(1);
       const commitMessage = `chore: sync ${platformName} rules (${year}-${month}-${day})`;
 
       const rulesPath =
@@ -323,7 +347,9 @@ async function commitPrompts(platform: string): Promise<void> {
                   ? '.factory/droids'
                   : platform === 'factory-commands'
                     ? '.factory/commands'
-                    : '.claude/commands';
+                    : platform === 'gemini'
+                      ? '.gemini'
+                      : '.claude/commands';
 
       await execAsync(`git add ${rulesPath}`);
       await execAsync(`git commit -m "${commitMessage}"`);
@@ -345,13 +371,14 @@ async function main() {
   const platform = await p.select({
     message: 'Select a platform:',
     options: [
-      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory + ClaudeCode)' },
+      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory + ClaudeCode + Gemini)' },
       { value: 'augment', label: 'Augment' },
       { value: 'cursor', label: 'Cursor' },
       { value: 'qoder', label: 'Qoder' },
       { value: 'factory-droids', label: 'Factory Droids' },
       { value: 'factory-commands', label: 'Factory Commands' },
       { value: 'claude', label: 'ClaudeCode' },
+      { value: 'gemini', label: 'Gemini' },
     ],
   });
 
@@ -444,6 +471,7 @@ async function main() {
       await savePrompts(promptsToSave, 'factory-droids', selectedScope);
       await savePrompts(promptsToSave, 'factory-commands', selectedScope);
       await savePrompts(promptsToSave, 'claude', selectedScope);
+      await savePrompts(promptsToSave, 'gemini', selectedScope);
     } else {
       await savePrompts(promptsToSave, selectedPlatform, selectedScope);
     }
