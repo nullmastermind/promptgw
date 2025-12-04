@@ -371,14 +371,12 @@ async function main() {
   const platform = await p.select({
     message: 'Select a platform:',
     options: [
-      { value: 'all', label: 'All (Augment + Cursor + Qoder + Factory + ClaudeCode + Gemini)' },
-      { value: 'augment', label: 'Augment' },
-      { value: 'cursor', label: 'Cursor' },
-      { value: 'qoder', label: 'Qoder' },
-      { value: 'factory-droids', label: 'Factory Droids' },
-      { value: 'factory-commands', label: 'Factory Commands' },
-      { value: 'claude', label: 'ClaudeCode' },
-      { value: 'gemini', label: 'Gemini' },
+      { value: 'all', label: 'ALL (Augment + ClaudeCode + Gemini + Cursor + Qoder + Factory)' },
+      { value: 'augment', label: 'AUGMENT CODE' },
+      { value: 'claude', label: 'CLAUDE CODE' },
+      { value: 'gemini', label: 'GEMINI (GOOGLE ANTIGRAVITY)' },
+      { value: 'cursor', label: 'CURSOR' },
+      { value: 'qoder', label: 'QODER' },
     ],
   });
 
