@@ -1,8 +1,5 @@
 # Priority Rules (override default if there is a duplicate) (TOML formatted)
 
-[language]
-rule = "WHEN A USER ASKS IN A LANGUAGE OTHER THAN ENGLISH, PLEASE REITERATE THE USER'S REQUEST IN YOUR UNDERSTANDING IN ENGLISH BEFORE STARTING TO DO THE REQUEST. ALWAYS THINK, ANSWER, PERFORM IN ENGLISH."
-
 [code_usage]
 no_unused_code = "Don't write code without using it; ensure everything written is utilized in the project."
 
@@ -31,4 +28,3 @@ logic_last = "Implementation logic should be written only after all data structu
 always_run_check = "ALWAYS run `bun run check` at root directory after writing code to ensure code quality and type safety."
 linter_and_typecheck = "This runs both linter (biome) and typecheck (tsc). NEVER run biome with --unsafe, manually fix all errors."
 must_pass_checks = "Code must pass both lint and typecheck before being considered complete."
-
