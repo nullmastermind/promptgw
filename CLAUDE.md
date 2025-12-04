@@ -13,6 +13,7 @@ Prompt Gateway CLI (`@dccxx/promptgw`) is a command-line tool that synchronizes 
 - Qoder (`.qoder/rules/*.md`)
 - Factory Droids (`.factory/droids/*.md`)
 - Factory Commands (`.factory/commands/*.md`)
+- ClaudeCode (`.claude/commands/*.md`)
 
 ## Development Commands
 
